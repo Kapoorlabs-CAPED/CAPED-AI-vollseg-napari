@@ -1,3 +1,29 @@
+Metadata-Version: 2.1
+Name: vollseg-napari
+Version: 2.0.9
+Summary: Irregular cell shape segmentation using VollSeg
+Home-page: https://github.com/kapoorlab/vollseg
+Author: Varun Kapoor
+Author-email: varun.kapoor@kapoorlabs.org
+License: BSD 3-Clause License
+Project-URL: Source Code, https://github.com/kapoorlab/vollseg-napari
+Project-URL: Documentation, https://github.com/kapoorlab/vollseg-napari
+Project-URL: Bug Tracker, https://github.com/kapoorlab/vollseg-napari/issues
+Project-URL: User Support, https://forum.image.sc/tag/vollseg
+Project-URL: Twitter, https://twitter.com/entracod
+Platform: UNKNOWN
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Scientific/Engineering
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Framework :: napari
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+
 # VollSeg Napari Plugin
 
 [![PyPI version](https://img.shields.io/pypi/v/vollseg-napari.svg)](https://pypi.org/project/vollseg-napari)
@@ -37,4 +63,6 @@ compatible with the respective version of TensorFlow. (If you need help and can 
 
 - The [image.sc forum](https://forum.image.sc/tag/vollseg) is the best place to start getting help and support. Make sure to use the tag `vollseg`, since we are monitoring all questions with this tag.
 - If you have technical questions or found a bug, feel free to [open an issue](https://github.com/kapoorlab/vollseg-napari/issues).
+
+
 
