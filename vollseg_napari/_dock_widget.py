@@ -33,12 +33,10 @@ from qtpy.QtWidgets import (
 
 def plugin_wrapper_vollseg():
 
-    from csbdeep.utils import _raise, normalize, axes_check_and_normalize, axes_dict
-    from vollseg.pretrained import get_registered_models, get_model_folder, get_model_details, get_model_instance
+    from csbdeep.utils import _raise, axes_check_and_normalize, axes_dict
+    from vollseg.pretrained import get_registered_models, get_model_folder
     from csbdeep.utils import load_json
-    import sys
-    from vollseg import VollSeg, VollSeg3D, VollSeg2D, VollSeg_unet, CARE, UNET, StarDist2D, StarDist3D, MASKUNET
-    
+    from vollseg import VollSeg, CARE, UNET, StarDist2D, StarDist3D, MASKUNET
     from stardist.utils import abspath
     
     DEBUG = False
@@ -134,6 +132,7 @@ def plugin_wrapper_vollseg():
         model_unet_none='NOUNET',
         model_roi_none='NOROI',
         norm_axes='ZYX',
+        axes = 'ZYX'
     )
 
     DEFAULTS_STAR_PARAMETERS = dict(
@@ -511,7 +510,7 @@ def plugin_wrapper_vollseg():
             widget_type='Label', label=f'<h1><img src="{logo}">VollSeg</h1>'
         ),
         image=dict(label='Input Image'),
-        axes=dict(widget_type='LineEdit', label='Image Axes'),
+        axes=dict(widget_type='LineEdit', label='Image Axes',value=DEFAULTS_MODEL['axes']),
         star_seg_model_type=dict(
             widget_type='RadioButtons',
             label='StarDist Model Type',
@@ -814,7 +813,7 @@ def plugin_wrapper_vollseg():
     _parameter_display_tab_layout = QVBoxLayout()
     parameter_display_tab.setLayout(_parameter_display_tab_layout)
     _parameter_display_tab_layout.addWidget(plugin_display_parameters.native)
-    tabs.addTab(parameter_display_tab, 'Layer Visibility Selection')
+    tabs.addTab(parameter_display_tab, 'Display Output Selection')
 
     parameter_kill_tab = QWidget()
     _parameter_kill_tab_layout = QVBoxLayout()
@@ -873,13 +872,6 @@ def plugin_wrapper_vollseg():
                     if DEBUG:
                         print('GOT viewer')
 
-                    @self.viewer.layers.events.removed.connect
-                    def _layer_removed(event):
-                        layers_remaining = event.source
-                        if len(layers_remaining) == 0:
-                            plugin.image.tooltip = ''
-                            plugin.axes.value = ''
-                            plugin_star_parameters.n_tiles.value = 'None'
 
             def _model(valid):
                 widgets_valid(
@@ -1066,12 +1058,7 @@ def plugin_wrapper_vollseg():
                     if DEBUG:
                         print('GOT viewer')
 
-                    @self.viewer.layers.events.removed.connect
-                    def _layer_removed(event):
-                        layers_remaining = event.source
-                        if len(layers_remaining) == 0:
-                            plugin.image.tooltip = ''
-                            plugin.axes.value = ''
+                   
 
             def _model(valid):
                 widgets_valid(
@@ -1256,12 +1243,7 @@ def plugin_wrapper_vollseg():
                     if DEBUG:
                         print('GOT viewer')
 
-                    @self.viewer.layers.events.removed.connect
-                    def _layer_removed(event):
-                        layers_remaining = event.source
-                        if len(layers_remaining) == 0:
-                            plugin.image.tooltip = ''
-                            plugin.axes.value = ''
+                   
 
             def _model(valid):
                 widgets_valid(
@@ -1569,11 +1551,10 @@ def plugin_wrapper_vollseg():
             plugin_star_parameters.perc_high.value,
         )
 
-    @change_handler(plugin.norm_axes,plugin.unet_seg_model_type, plugin.star_seg_model_type, plugin.den_model_type, plugin.roi_model_type)
+    @change_handler(plugin.norm_axes, plugin.unet_seg_model_type, plugin.star_seg_model_type, plugin.den_model_type, plugin.roi_model_type)
     def _norm_axes_change(value: str):
-        if value != value.upper():
-            with plugin.axes.changed.blocked():
-                plugin.norm_axes.value = value.upper()
+        
+        value = plugin.norm_axes.value 
         try:
             axes = axes_check_and_normalize(value, disallowed='S')
             if len(axes) >= 1:
@@ -1711,92 +1692,83 @@ def plugin_wrapper_vollseg():
                 Markers = np.reshape(Markers, x.shape)     
                 for layer in list(plugin.viewer.value.layers):
                     
-                    if  'VollSeg Binary' in layer.name:
+                    if  any('VollSeg Binary','Base Watershed Image','VollSeg labels','StarDist','Markers','Skeleton','Denoised Image')  in layer.name:
                              plugin.viewer.value.layers.remove(layer)
-                    if 'Base Watershed Image' in layer.name:
-                             plugin.viewer.value.layers.remove(layer)         
-                    if 'VollSeg labels' in layer.name:
-                             plugin.viewer.value.layers.remove(layer)
-                    if 'StarDist' in layer.name:
-                             plugin.viewer.value.layers.remove(layer)
-                    if 'Markers' in layer.name:
-                             plugin.viewer.value.layers.remove(layer)         
-                    if 'Skeleton' in layer.name:
-                             plugin.viewer.value.layers.remove(layer)
-                    if 'Denoised Image' in layer.name:
-                             plugin.viewer.value.layers.remove(layer)         
+                         
         if plugin.star_seg_model_type.value != DEFAULTS_MODEL['model_star_none']:
-
-                    plugin.viewer.value.add_image(
-                                
-                                    probability_map,
-                                    
-                                        name='Base Watershed Image',
-                                        scale=scale_out,
-                                        visible=plugin_display_parameters.display_prob.value,
-                                
-                            )
-
-                    plugin.viewer.value.add_labels(
-                        
-                            labels,
-                          
-                                name='VollSeg labels', scale= scale_out, opacity=0.5,  visible = plugin_display_parameters.display_vollseg.value
-                        
-                    )
-
-                    plugin.viewer.value.add_labels(
-                        
-                            star_labels,
-                            
-                                name='StarDist',
-                                scale=scale_out,
-                                opacity=0.5,
-                                visible=plugin_display_parameters.display_stardist.value,
-                           
-                    )
-                    
-                    plugin.viewer.value.add_labels(
-                        
-                            unet_mask,
-                           
-                                name='VollSeg Binary',
-                                scale=scale_out,
-                                opacity=0.5,
-                                visible=plugin_display_parameters.display_unet.value,
-                          
-                    )
-
-                    plugin.viewer.value.add_labels(
-                        
-                            Markers,
-                            
-                                name='Markers',
-                                scale=scale_out,
-                                opacity=0.5,
-                                visible=plugin_display_parameters.display_markers.value,
-                          
-                    )
-                    plugin.viewer.value.add_labels(
-                        
-                            Skeleton,
-                            
-                                name='Skeleton',
-                                scale=scale_out,
-                                opacity=0.5,
-                                visible=plugin_display_parameters.display_skeleton.value,
-                            
-                    )
-                    if plugin.den_model_type.value != DEFAULTS_MODEL['model_den_none']:
+                    if plugin_display_parameters.display_prob.value:
                         plugin.viewer.value.add_image(
+                                    
+                                        probability_map,
+                                        
+                                            name='Base Watershed Image',
+                                            scale=scale_out,
+                                            visible=plugin_display_parameters.display_prob.value,
+                                    
+                                )
+                    if plugin_display_parameters.display_vollseg.value:
+                        plugin.viewer.value.add_labels(
                             
-                                denoised_image,
+                                labels,
                             
-                                    name='Denoised Image',
-                                    scale=scale_out,
-                                    visible=plugin_display_parameters.display_denoised.value,
+                                    name='VollSeg labels', scale= scale_out, opacity=0.5,  visible = plugin_display_parameters.display_vollseg.value
+                            
+                        )
+                    if plugin_display_parameters.display_stardist.value:
+                        plugin.viewer.value.add_labels(
+                            
+                                star_labels,
                                 
-                            )
+                                    name='StarDist',
+                                    scale=scale_out,
+                                    opacity=0.5,
+                                    visible=plugin_display_parameters.display_stardist.value,
+                            
+                        )
+                    if plugin_display_parameters.display_unet.value:    
+                        plugin.viewer.value.add_labels(
+                            
+                                unet_mask,
+                            
+                                    name='VollSeg Binary',
+                                    scale=scale_out,
+                                    opacity=0.5,
+                                    visible=plugin_display_parameters.display_unet.value,
+                            
+                        )
+                    if plugin_display_parameters.display_markers.value:
+                        plugin.viewer.value.add_labels(
+                            
+                                Markers,
+                                
+                                    name='Markers',
+                                    scale=scale_out,
+                                    opacity=0.5,
+                                    visible=plugin_display_parameters.display_markers.value,
+                            
+                        )
+                    if plugin_display_parameters.display_skeleton.value:    
+                        plugin.viewer.value.add_labels(
+                            
+                                Skeleton,
+                                
+                                    name='Skeleton',
+                                    scale=scale_out,
+                                    opacity=0.5,
+                                    visible=plugin_display_parameters.display_skeleton.value,
+                                
+                        )
+                    if plugin_display_parameters.display_denoised.value:     
+                        if plugin.den_model_type.value != DEFAULTS_MODEL['model_den_none']:
+                            plugin.viewer.value.add_image(
+                                
+                                    denoised_image,
+                                
+                                        name='Denoised Image',
+                                        scale=scale_out,
+                                        visible=plugin_display_parameters.display_denoised.value,
+                                    
+                                )
         
     
     def return_segment(pred):
@@ -1815,91 +1787,85 @@ def plugin_wrapper_vollseg():
               unet_mask, denoised_image = res
           for layer in list(plugin.viewer.value.layers):
               
-              if 'VollSeg Binary' in layer.name:
+              if any('VollSeg Binary', 'Base Watershed Image', 'VollSeg labels', 'StarDist','Markers', 'Skeleton','Denoised Image' ) in layer.name:
                        plugin.viewer.value.layers.remove(layer)
-              if 'Base Watershed Image' in layer.name:
-                       plugin.viewer.value.layers.remove(layer)         
-              if 'VollSeg labels' in layer.name:
-                       plugin.viewer.value.layers.remove(layer)
-              if 'StarDist' in layer.name:
-                       plugin.viewer.value.layers.remove(layer)
-              if 'Markers' in layer.name:
-                       plugin.viewer.value.layers.remove(layer)         
-              if 'Skeleton' in layer.name:
-                       plugin.viewer.value.layers.remove(layer)
-              if 'Denoised Image' in layer.name:
-                       plugin.viewer.value.layers.remove(layer)         
+                     
           if plugin.star_seg_model_type.value != DEFAULTS_MODEL['model_star_none']:
-              plugin.viewer.value.add_image(
-                  
-                      probability_map,
-                      
-                          name='Base Watershed Image',
-                          scale=scale_out,
-                          visible=plugin_display_parameters.display_prob.value,
-                     
-              )
 
-              plugin.viewer.value.add_labels(
-                  
-                      labels,
+              if plugin_display_parameters.display_prob.value:
+                plugin.viewer.value.add_image(
                     
-                          name='VollSeg labels', scale= scale_out, opacity=0.5, visible = plugin_display_parameters.display_vollseg.value 
-                  
-              )
-
-              plugin.viewer.value.add_labels(
-                  
-                      star_labels,
-                      
-                          name='StarDist',
-                          scale=scale_out,
-                          opacity=0.5,
-                          visible=plugin_display_parameters.display_stardist.value,
-                     
-              )
-              
-              plugin.viewer.value.add_labels(
-                  
-                      unet_mask,
-                     
-                          name='VollSeg Binary',
-                          scale=scale_out,
-                          opacity=0.5,
-                          visible=plugin_display_parameters.display_unet.value,
-                    
-              )
-
-              plugin.viewer.value.add_labels(
-                  
-                      Markers,
-                      
-                          name='Markers',
-                          scale=scale_out,
-                          opacity=0.5,
-                          visible=plugin_display_parameters.display_markers.value,
-                    
-              )
-              plugin.viewer.value.add_labels(
-                  
-                      Skeleton,
-                      
-                          name='Skeleton',
-                          scale=scale_out,
-                          opacity=0.5,
-                          visible=plugin_display_parameters.display_skeleton.value,
-                      
-              )
-              if plugin.den_model_type.value != DEFAULTS_MODEL['model_den_none']:
-                    plugin.viewer.value.add_image(
+                        probability_map,
                         
-                            denoised_image,
+                            name='Base Watershed Image',
+                            scale=scale_out,
+                            visible=plugin_display_parameters.display_prob.value,
                         
-                                name='Denoised Image',
-                                scale=scale_out,
-                                visible=plugin_display_parameters.display_denoised.value,
+                )
+              if plugin_display_parameters.display_vollseg.value:
+                    plugin.viewer.value.add_labels(
+                        
+                            labels,
                             
-                        )
+                                name='VollSeg labels', scale= scale_out, opacity=0.5, visible = plugin_display_parameters.display_vollseg.value 
+                        
+                    )
+              if plugin_display_parameters.display_stardist.value:
+                    plugin.viewer.value.add_labels(
+                        
+                            star_labels,
+                            
+                                name='StarDist',
+                                scale=scale_out,
+                                opacity=0.5,
+                                visible=plugin_display_parameters.display_stardist.value,
+                            
+                    )
+              if plugin_display_parameters.display_unet.value:
+                    plugin.viewer.value.add_labels(
+                        
+                            unet_mask,
+                            
+                                name='VollSeg Binary',
+                                scale=scale_out,
+                                opacity=0.5,
+                                visible=plugin_display_parameters.display_unet.value,
+                            
+                    )
+              if plugin_display_parameters.display_markers.value:
+                    plugin.viewer.value.add_labels(
+                        
+                            Markers,
+                            
+                                name='Markers',
+                                scale=scale_out,
+                                opacity=0.5,
+                                visible=plugin_display_parameters.display_markers.value,
+                            
+                    )
+
+              if plugin_display_parameters.display_skeleton.value:      
+                    plugin.viewer.value.add_labels(
+                        
+                            Skeleton,
+                            
+                                name='Skeleton',
+                                scale=scale_out,
+                                opacity=0.5,
+                                visible=plugin_display_parameters.display_skeleton.value,
+                            
+                    )
+              if plugin_display_parameters.display_denoised.value:      
+                    if plugin.den_model_type.value != DEFAULTS_MODEL['model_den_none']:
+                            plugin.viewer.value.add_image(
+                                
+                                    denoised_image,
+                                
+                                        name='Denoised Image',
+                                        scale=scale_out,
+                                        visible=plugin_display_parameters.display_denoised.value,
+                                    
+                                )
     def return_segment_unet_time(pred):
         
         
@@ -1923,72 +1889,72 @@ def plugin_wrapper_vollseg():
               denoised_image = np.reshape(denoised_image, x.shape)
               for layer in list(plugin.viewer.value.layers):
                   
-                  if 'VollSeg Binary' in layer.name:
+                  if any('VollSeg Binary','Denoised Image', 'Skeleton')  in layer.name:
                            plugin.viewer.value.layers.remove(layer)
-                  if 'Denoised Image' in layer.name:
-                           plugin.viewer.value.layers.remove(layer)     
-                  if 'Skeleton' in layer.name:
-                       plugin.viewer.value.layers.remove(layer)         
-              plugin.viewer.value.add_labels(
-                  
-                      unet_mask, name ='VollSeg Binary',
-                          scale= scale_out,
-                          opacity=0.5,
-                          visible=plugin_display_parameters.display_unet.value)
+                   
 
-              plugin.viewer.value.add_labels(
-                  
-                      skeleton, name ='Skeleton',
-                          scale= scale_out,
-                          opacity=0.5,
-                          visible=plugin_display_parameters.display_skeleton.value)
+              if plugin_display_parameters.display_unet.value:
+                    plugin.viewer.value.add_labels(
+                        
+                            unet_mask, name ='VollSeg Binary',
+                                scale= scale_out,
+                                opacity=0.5,
+                                visible=plugin_display_parameters.display_unet.value)
+              if plugin_display_parameters.display_skeleton.value:
+                    plugin.viewer.value.add_labels(
+                        
+                            skeleton, name ='Skeleton',
+                                scale= scale_out,
+                                opacity=0.5,
+                                visible=plugin_display_parameters.display_skeleton.value)
 
               if plugin.den_model_type.value != DEFAULTS_MODEL['model_den_none']:
-                  plugin.viewer.value.add_image(
-                      
-                          denoised_image,
-                       
-                              name='Denoised Image',
-                              scale=scale_out,
-                              visible=plugin_display_parameters.display_denoised.value,
-                          
-                      )
+
+                  if plugin_display_parameters.display_denoised.value:
+                        plugin.viewer.value.add_image(
+                            
+                                denoised_image,
+                            
+                                    name='Denoised Image',
+                                    scale=scale_out,
+                                    visible=plugin_display_parameters.display_denoised.value,
+                                
+                            )
     def return_segment_unet(pred):
             
               res, scale_out = pred
               unet_mask, skeleton, denoised_image = res
               for layer in list(plugin.viewer.value.layers):
                   
-                  if 'VollSeg Binary' in layer.name:
+                  if any('VollSeg Binary','Denoised Image','Skeleton')  in layer.name:
                            plugin.viewer.value.layers.remove(layer)
-                  if 'Denoised Image' in layer.name:
-                           plugin.viewer.layers.value.remove(layer)
-                  if 'Skeleton' in layer.name:
-                       plugin.viewer.value.layers.remove(layer)         
-                           
-              plugin.viewer.value.add_labels(
-                  
-                      unet_mask, name ='VollSeg Binary',
-                          scale= scale_out,
-                          opacity=0.5,
-                          visible=plugin_display_parameters.display_unet.value)
-
-              plugin.viewer.value.add_labels(
-                  
-                      skeleton, name ='Skeleton',
-                          scale= scale_out,
-                          opacity=0.5,
-                          visible=plugin_display_parameters.display_skeleton.value)            
+                       
+              if plugin_display_parameters.display_unet.value:             
+                    plugin.viewer.value.add_labels(
+                        
+                            unet_mask, name ='VollSeg Binary',
+                                scale= scale_out,
+                                opacity=0.5,
+                                visible=plugin_display_parameters.display_unet.value)
+              if plugin_display_parameters.display_skeleton.value:
+                    plugin.viewer.value.add_labels(
+                        
+                            skeleton, name ='Skeleton',
+                                scale= scale_out,
+                                opacity=0.5,
+                                visible=plugin_display_parameters.display_skeleton.value)            
               if plugin.den_model_type.value != DEFAULTS_MODEL['model_den_none']:
-                 plugin.viewer.value.add_image(
-                     
-                         denoised_image,
-                      
-                             name='Denoised Image',
-                             scale=scale_out,
-                             visible=plugin_display_parameters.display_denoised.value,
-                         
-                     )
+
+                 if  plugin_display_parameters.display_denoised.value:
+                        plugin.viewer.value.add_image(
+                            
+                                denoised_image,
+                            
+                                    name='Denoised Image',
+                                    scale=scale_out,
+                                    visible=plugin_display_parameters.display_denoised.value,
+                                
+                            )
           
 
 
@@ -2434,9 +2400,9 @@ def plugin_wrapper_vollseg():
                 plugin.model_roi_image = None
 
     # -> triggered by _image_change
-    @change_handler(plugin.axes, init=False)
-    def _axes_change(value: str):
-        plugin.axes.value = value.upper()
+    @change_handler(plugin.axes,plugin.unet_seg_model_type, plugin.star_seg_model_type, plugin.den_model_type, plugin.roi_model_type, init=False)
+    def _axes_change():
+        value = plugin.axes.value
         image = plugin.image.value
         axes = plugin.axes.value
         try:
@@ -2622,21 +2588,3 @@ def napari_get_reader(path: str):
         return None
 
 
-""" @napari_hook_implementation
-def napari_experimental_provide_dock_widget():
-    return plugin_wrapper_vollseg, dict(name='VollSeg', add_vertical_stretch=True)
-
-
-@napari_hook_implementation
-def napari_provide_sample_data():
-
-    return {
-        'test_image_cell_3d': {
-            'data': lambda: [(test_image_ascadian_3d(), {'name': 'ascadian_embryo_3d'})],
-            'display_name': 'Embryo Cells (3D)',
-        },
-        'test_image_cell_3dt': {
-            'data': lambda: [(test_image_carcinoma_3dt(), {'name': 'carcinoma_cells_3dt'})],
-            'display_name': 'Breast Cancer Cells (3DT)',
-        },
-    }  """

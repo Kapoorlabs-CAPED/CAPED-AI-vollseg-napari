@@ -15,7 +15,7 @@ with open(path.join(_dir,'README.md'), encoding="utf-8") as f:
 setup(
     name='vollseg-napari',
 
-    version= '2.1.5',
+    version= '2.1.9',
 
     description='Irregular cell shape segmentation using VollSeg',
     long_description=long_description,
@@ -38,9 +38,7 @@ setup(
 
       entry_points={'napari.manifest': ['vollseg-napari = vollseg_napari:napari.yaml']},
 
-      #package_data={'vollseg_napari': [ 'resources/*' ]},
-
-      #entry_points={'napari.plugin': 'VollSeg = vollseg_napari'},
+     
       
       dependeny_links = ['https://github.com/bhoeckendorf/pyklb.git@skbuild'],
 
